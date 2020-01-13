@@ -126,7 +126,7 @@ module.exports = {
             {}
           );
           _response.ResponseModels = responseModels;
-          this.addModelDependencies(_response.ResponseModels, resource);
+          this.addModelDependencies(response.ResponseModels, resource);
         }
       });
     }
