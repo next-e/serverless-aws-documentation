@@ -112,13 +112,20 @@ module.exports = {
         }
 
         if (response.responseModels) {
-          Object.keys(response.responseModels).forEach(contentType => {
-            let model = response.responseModels[contentType];
-            if (isObject(model)) {
-              model = model.externalName;
-            }
-          });
-          _response.ResponseModels = response.responseModels;
+          const responseModels = Object.keys(response.responseModels).reduce(
+            (acum, contentType) => {
+              let model = response.responseModels[contentType];
+              console.log(model);
+              if (isObject(model)) {
+                acum[contentType] = model.externalName;
+              } else {
+                acum[contentType] = model;
+              }
+              return acum;
+            },
+            {}
+          );
+          _response.ResponseModels = responseModels;
           this.addModelDependencies(_response.ResponseModels, resource);
         }
       });
