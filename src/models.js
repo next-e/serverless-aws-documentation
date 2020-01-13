@@ -112,11 +112,6 @@ module.exports = {
         }
 
         if (response.responseModels) {
-          response.responseModels.forEach(model => {
-            if (isObject(model)) {
-              model = model.externalName;
-            }
-          });
           Object.keys(response.responseModels).forEach(contentType => {
             let model = response.responseModels[contentType];
             if (isObject(model)) {
