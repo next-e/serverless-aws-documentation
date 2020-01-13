@@ -1,69 +1,82 @@
-'use strict';
+"use strict";
+
+function isObject(variable) {
+  return Object.prototype.toString.call(variable) === "[object Object]";
+}
+
+function isString(variable) {
+  return typeof variable === "string" || variable instanceof String;
+}
 
 function replaceModelRefs(restApiId, cfModel) {
-    if (!cfModel.Properties || !cfModel.Properties.Schema || Object.keys(cfModel.Properties.Schema).length == 0) {
-      return cfModel;
-    }
-
-    function replaceRefs(obj) {
-        for (let key of Object.keys(obj)) {
-            if (key === '$ref') {
-                let match;
-                if (match = /{{model:\s*([\-\w]+)}}/.exec(obj[key])) {
-                    obj[key] = {
-                        'Fn::Join': [
-                            '/',
-                            [
-                                'https://apigateway.amazonaws.com/restapis',
-                                restApiId,
-                                'models',
-                                match[1]
-                            ]
-                        ]
-                    };
-                    if (!cfModel.DependsOn) {
-                        cfModel.DependsOn = new Set();
-                    }
-                    cfModel.DependsOn.add(match[1]+'Model');
-                }
-            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-                replaceRefs(obj[key]);
-            }
-        }
-    }
-
-    replaceRefs(cfModel.Properties.Schema);
-    if (cfModel.DependsOn) {
-        cfModel.DependsOn = Array.from(cfModel.DependsOn);
-    }
+  if (
+    !cfModel.Properties ||
+    !cfModel.Properties.Schema ||
+    Object.keys(cfModel.Properties.Schema).length == 0
+  ) {
     return cfModel;
+  }
+
+  function replaceRefs(obj) {
+    for (let key of Object.keys(obj)) {
+      if (key === "$ref") {
+        let match;
+        if ((match = /{{model:\s*([\-\w]+)}}/.exec(obj[key]))) {
+          obj[key] = {
+            "Fn::Join": [
+              "/",
+              [
+                "https://apigateway.amazonaws.com/restapis",
+                restApiId,
+                "models",
+                match[1]
+              ]
+            ]
+          };
+          if (!cfModel.DependsOn) {
+            cfModel.DependsOn = new Set();
+          }
+          cfModel.DependsOn.add(match[1] + "Model");
+        }
+      } else if (typeof obj[key] === "object" && obj[key] !== null) {
+        replaceRefs(obj[key]);
+      }
+    }
+  }
+
+  replaceRefs(cfModel.Properties.Schema);
+  if (cfModel.DependsOn) {
+    cfModel.DependsOn = Array.from(cfModel.DependsOn);
+  }
+  return cfModel;
 }
 
 module.exports = {
   createCfModel: function createCfModel(restApiId) {
     return function(model) {
-
       let cfModel = {
-        Type: 'AWS::ApiGateway::Model',
+        Type: "AWS::ApiGateway::Model",
         Properties: {
           RestApiId: restApiId,
           ContentType: model.contentType,
           Name: model.name,
-          Schema: model.schema || {},
-        },
-      }
+          Schema: model.schema || {}
+        }
+      };
 
       if (model.description) {
-        cfModel.Properties.Description = model.description
+        cfModel.Properties.Description = model.description;
       }
 
-      return replaceModelRefs(restApiId, cfModel)
-    }
+      return replaceModelRefs(restApiId, cfModel);
+    };
   },
 
   addModelDependencies: function addModelDependencies(models, resource) {
     Object.keys(models).forEach(contentType => {
-      resource.DependsOn.add(`${models[contentType]}Model`);
+      if (isString(models[contentType])) {
+        resource.DependsOn.add(`${models[contentType]}Model`);
+      }
     });
   },
 
@@ -75,18 +88,22 @@ module.exports = {
 
       documentation.methodResponses.forEach(response => {
         const statusCode = response.statusCode.toString();
-        let _response = resource.Properties.MethodResponses
-          .find(originalResponse => originalResponse.StatusCode.toString() === statusCode);
+        let _response = resource.Properties.MethodResponses.find(
+          originalResponse =>
+            originalResponse.StatusCode.toString() === statusCode
+        );
 
         if (!_response) {
           _response = {
-            StatusCode: statusCode,
+            StatusCode: statusCode
           };
 
           if (response.responseHeaders) {
             const methodResponseHeaders = {};
             response.responseHeaders.forEach(header => {
-              methodResponseHeaders[`method.response.header.${header.name}`] = true
+              methodResponseHeaders[
+                `method.response.header.${header.name}`
+              ] = true;
             });
             _response.ResponseParameters = methodResponseHeaders;
           }
@@ -95,18 +112,32 @@ module.exports = {
         }
 
         if (response.responseModels) {
-          _response.ResponseModels = response.responseModels;
-          this.addModelDependencies(_response.ResponseModels, resource);
+          const responseModels = Object.keys(response.responseModels).reduce(
+            (acum, contentType) => {
+              let model = response.responseModels[contentType];
+              if (isObject(model)) {
+                acum[contentType] = model.externalName;
+              } else {
+                acum[contentType] = model;
+              }
+              return acum;
+            },
+            {}
+          );
+          _response.ResponseModels = responseModels;
+          this.addModelDependencies(response.responseModels, resource);
         }
       });
     }
   },
 
   addRequestModels: function addRequestModels(resource, documentation) {
-    if (documentation.requestModels && Object.keys(documentation.requestModels).length > 0) {
+    if (
+      documentation.requestModels &&
+      Object.keys(documentation.requestModels).length > 0
+    ) {
       this.addModelDependencies(documentation.requestModels, resource);
       resource.Properties.RequestModels = documentation.requestModels;
     }
   }
-
 };
