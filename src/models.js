@@ -117,6 +117,12 @@ module.exports = {
               model = model.externalName;
             }
           });
+          Object.keys(response.responseModels).forEach(contentType => {
+            let model = response.responseModels[contentType];
+            if (isObject(model)) {
+              model = model.externalName;
+            }
+          });
           _response.ResponseModels = response.responseModels;
           this.addModelDependencies(_response.ResponseModels, resource);
         }
