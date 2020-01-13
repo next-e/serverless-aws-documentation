@@ -112,12 +112,12 @@ module.exports = {
         }
 
         if (response.responseModels) {
-          _response.ResponseModels = response.responseModels.map(model => {
+          response.responseModels.forEach(model => {
             if (isObject(model)) {
-              return model.name;
+              model = model.externalName;
             }
-            return model;
           });
+          _response.ResponseModels = response.responseModels;
           this.addModelDependencies(_response.ResponseModels, resource);
         }
       });
