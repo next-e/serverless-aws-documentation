@@ -1,5 +1,13 @@
 "use strict";
 
+function isObject(variable) {
+  return Object.prototype.toString.call(variable) === "[object Object]";
+}
+
+function isString(variable) {
+  return typeof variable === "string" || variable instanceof String;
+}
+
 function replaceModelRefs(restApiId, cfModel) {
   if (
     !cfModel.Properties ||
@@ -66,8 +74,9 @@ module.exports = {
 
   addModelDependencies: function addModelDependencies(models, resource) {
     Object.keys(models).forEach(contentType => {
-      console.log(models[contentType]);
-      resource.DependsOn.add(`${models[contentType]}Model`);
+      if (isString(models[contentType])) {
+        resource.DependsOn.add(`${models[contentType]}Model`);
+      }
     });
   },
 
@@ -103,7 +112,12 @@ module.exports = {
         }
 
         if (response.responseModels) {
-          _response.ResponseModels = response.responseModels;
+          _response.ResponseModels = response.responseModels.map(model => {
+            if (isObject(model)) {
+              return model.name;
+            }
+            return model;
+          });
           this.addModelDependencies(_response.ResponseModels, resource);
         }
       });
