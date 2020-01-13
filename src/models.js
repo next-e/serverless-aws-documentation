@@ -115,7 +115,6 @@ module.exports = {
           const responseModels = Object.keys(response.responseModels).reduce(
             (acum, contentType) => {
               let model = response.responseModels[contentType];
-              console.log(model);
               if (isObject(model)) {
                 acum[contentType] = model.externalName;
               } else {
