@@ -19,7 +19,7 @@ function replaceModelRefs(restApiId, cfModel) {
 
   function replaceRefs(obj) {
     for (let key of Object.keys(obj)) {
-      if (key === "$ref") {
+      if (key === "$ref" || key === "$externalRef") {
         let match;
         if ((match = /{{model:\s*([\-\w]+)}}/.exec(obj[key]))) {
           obj[key] = {
@@ -33,10 +33,12 @@ function replaceModelRefs(restApiId, cfModel) {
               ]
             ]
           };
-          if (!cfModel.DependsOn) {
-            cfModel.DependsOn = new Set();
+          if (key === "$ref") {
+            if (!cfModel.DependsOn) {
+              cfModel.DependsOn = new Set();
+            }
+            cfModel.DependsOn.add(match[1] + "Model");
           }
-          cfModel.DependsOn.add(match[1] + "Model");
         }
       } else if (typeof obj[key] === "object" && obj[key] !== null) {
         replaceRefs(obj[key]);
