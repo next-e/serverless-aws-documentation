@@ -19,9 +19,12 @@ function replaceModelRefs(restApiId, cfModel) {
 
   function replaceRefs(obj) {
     for (let key of Object.keys(obj)) {
-      if (key === "$ref" || key === "$externalRef") {
+      if (key === "$ref") {
         let match;
-        if ((match = /{{model:\s*([\-\w]+)}}/.exec(obj[key]))) {
+        if (
+          (match = /{{model:\s*([\-\w]+)}}/.exec(obj[key])) ||
+          (match = /{{externalModel:\s*([\-\w]+)}}/.exec(obj[key]))
+        ) {
           obj[key] = {
             "Fn::Join": [
               "/",
@@ -33,7 +36,7 @@ function replaceModelRefs(restApiId, cfModel) {
               ]
             ]
           };
-          if (key === "$ref") {
+          if ((match = /{{model:\s*([\-\w]+)}}/.exec(obj[key]))) {
             if (!cfModel.DependsOn) {
               cfModel.DependsOn = new Set();
             }
